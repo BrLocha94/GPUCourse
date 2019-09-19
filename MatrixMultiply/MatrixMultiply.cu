@@ -11,12 +11,14 @@ __global__ void matrixMultiply(const float *A, const float *B, float *C, int num
 
     float counter = 0;
 
-    if (ROW < numElements && COL < numElements) {
-        // each thread computes one element of the block sub-matrix
-        for (int i = 0; i < numElements; i++) {
+    if (ROW < numElements && COL < numElements) 
+    {
+        for (int i = 0; i < numElements; i++) 
+        {
             counter += A[ROW * numElements + i] * B[i * numElements + COL];
         }
     }
+
     C[ROW * numElements + COL] = counter;
 }
 
@@ -58,9 +60,7 @@ int main(void)
     cudaEventCreate(&stop);
     cudaEventRecord(start, 0);
 
-
     matrixMultiply<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, numElements);
-
 
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
