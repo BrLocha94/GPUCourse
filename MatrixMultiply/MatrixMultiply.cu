@@ -4,14 +4,20 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-__global__ void addVector(const float *A, const float *B, float *C, int numElements)
+__global__ void matrixMultiply(const float *A, const float *B, float *C, int numElements)
 {
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    int ROW = blockIdx.y * blockDim.y + threadIdx.y;
+    int COL = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i < numElements)
-    {
-        C[i] = A[i] + B[i];
+    float counter = 0;
+
+    if (ROW < numElements && COL < numElements) {
+        // each thread computes one element of the block sub-matrix
+        for (int i = 0; i < numElements; i++) {
+            counter += A[ROW * numElements + i] * B[i * numElements + COL];
+        }
     }
+    C[ROW * numElements + COL] = counter;
 }
 
 int main(void)
@@ -28,10 +34,15 @@ int main(void)
     float *h_B = (float *)malloc(size);
     float *h_C = (float *)malloc(size);
 
-    for (int i = 0; i < numElements; ++i)
+    int matrixOrder = 4;
+
+    for (int i = 0; i < matrixOrder; i++)
     {
-        h_A[i] = rand()/(float)RAND_MAX;
-        h_B[i] = rand()/(float)RAND_MAX;
+        for (int j = 0; j < matrixOrder; j++)
+        {
+            h_A[(i * matrixOrder) + j] = rand()/(float)RAND_MAX;
+            h_B[(i * matrixOrder) + j] = rand()/(float)RAND_MAX;
+        }
     }
 
     float *d_A = NULL;  cudaMalloc((void **)&d_A, size);
@@ -48,7 +59,7 @@ int main(void)
     cudaEventRecord(start, 0);
 
 
-    addVector<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, numElements);
+    matrixMultiply<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, numElements);
 
 
     cudaEventRecord(stop, 0);
@@ -66,9 +77,9 @@ int main(void)
     printf("GPU: %f ms bandwidth %g GB/s",ms, memXFers/(ms/1000.0));
     printf("\n CPU : %g ms bandwidth %g GB/s",mtime, memXFers/(mtime/1000.0));
 
-    err = cudaFree(d_A);
-    err = cudaFree(d_B);
-    err = cudaFree(d_C);
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
 
     free(h_A);
     free(h_B);
